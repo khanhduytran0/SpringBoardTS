@@ -1,0 +1,49 @@
+name: Build
+
+on:
+  push:
+  workflow_dispatch:
+
+env:
+  THEOS: ${{ github.workspace }}/theos
+
+jobs:
+  build-and-upload:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install Dependencies
+        run: |
+          brew install dpkg ldid make
+
+      - name: Checkout THEOS
+        uses: actions/checkout@v4
+        with:
+          repository: theos/theos
+          ref: master
+          path: theos
+          submodules: recursive
+
+      - name: Get THEOS SDKs
+        uses: actions/checkout@v4
+        with:
+          repository: theos/sdks
+          ref: master
+          path: ${{ github.workspace }}/theos/sdks
+
+      - name: Build Packages
+        run: |
+          export THEOS_PLATFORM_SDK_ROOT=$THEOS/sdks/iPhoneOS15.6.sdk
+          make package
+          cp packages/*.ipa .
+
+      - name: Upload Packages
+        uses: actions/upload-artifact@v4
+        with:
+          name: packages
+          path: |
+            *.ipa

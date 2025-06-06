@@ -6,6 +6,7 @@
 #include <spawn.h>
 #include "fishhook/fishhook.h"
 #import "IgnoredAssertionHandler.h"
+#include "xpc/xpc.h"
 
 extern void PerformHook(void* _target, void* _replacement, void** orig);
 
