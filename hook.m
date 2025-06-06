@@ -7,7 +7,7 @@
 @import Darwin;
 @import MachO;
 
-#include "<assert.h>"
+#include <assert.h>
 
 extern void EKJITLessHook(void* _target, void* _replacement, void** orig);
 void (*MSHookFunction_)(void* _target, void* _replacement, void** orig);
