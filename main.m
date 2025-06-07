@@ -8,6 +8,8 @@
 #import "IgnoredAssertionHandler.h"
 #include "xpc/xpc.h"
 
+int (*_LSServerMain)(int argc, char *argv[], char *envp[]);
+
 extern void PerformHook(void* _target, void* _replacement, void** orig);
 
 typedef char name_t[128];
@@ -24,27 +26,17 @@ void* hook_exit(int status) {
     return NULL;
 }
 
-kern_return_t (*orig_bootstrap_check_in)(mach_port_t bp, const name_t service_name, mach_port_t *sp);
-kern_return_t hook_bootstrap_check_in(mach_port_t bp, const name_t service_name, mach_port_t *sp) {
-    orig_bootstrap_check_in(bp, service_name, sp);
-    return 0; // regardless of errors
-}
-
-xpc_connection_t (*orig_xpc_connection_create_mach_service)(const char *name, dispatch_queue_t targetq, uint64_t flags);
-xpc_connection_t hook_xpc_connection_create_mach_service(const char *name, dispatch_queue_t targetq, uint64_t flags) {
-    NSLog(@"xpc_connection_create_mach_service(%s, %@, %llu)", name, targetq, flags);
-    if (flags == XPC_CONNECTION_MACH_SERVICE_LISTENER) {
-        NSLog(@"Changing flag for Mach Service: %s", name);
-        // this is just to prevent it from crashing
-        // com.apple.frontboard.systemappservices
-        // com.apple.siri.activation.service
-        return orig_xpc_connection_create_mach_service(name, targetq, 0);
-    }
-    return orig_xpc_connection_create_mach_service(name, targetq, flags);
-}
-
 int (*SBSystemAppMain)(int argc, char *argv[], char *envp[]);
 int main(int argc, char *argv[], char *envp[]) {
+    // initialize lsd
+    dispatch_async(dispatch_get_main_queue(), ^{
+        // once lsd hits the run loop, stop it to continue
+        CFRunLoopStop(CFRunLoopGetMain());
+    });
+    void *csHandle = dlopen("/System/Library/Frameworks/CoreServices.framework/CoreServices", 0);
+    _LSServerMain = dlsym(csHandle,"_LSServerMain");
+    _LSServerMain(argc, argv, envp);
+    
     // Create symlinks (only works in LiveContainer)
     NSURL *fakeSBURL = NSBundle.mainBundle.bundleURL;
     NSURL *realSBURL = [NSURL fileURLWithPath:@"/System/Library/CoreServices/SpringBoard.app"];
@@ -71,9 +63,8 @@ int main(int argc, char *argv[], char *envp[]) {
         [@(dlerror()) writeToFile:[@(getenv("LC_HOME_PATH")) stringByAppendingPathComponent:@"Documents/SpringBoardLC.txt"] atomically:YES];
         abort();
     }
-
-    dlopen("/var/jb/usr/lib/TweakInject/FLEXing.dylib", RTLD_GLOBAL|RTLD_NOW);
     
+    dlopen("/var/jb/usr/lib/TweakInject/FLEXing.dylib", RTLD_GLOBAL|RTLD_NOW);
     SBSystemAppMain = dlsym(handle, "SBSystemAppMain");
 	 return SBSystemAppMain(argc, argv, envp);
 }

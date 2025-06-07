@@ -5,7 +5,9 @@
 //  Created by Duy Tran on 1/6/25.
 //
 @import Darwin;
+@import Foundation;
 @import MachO;
+@import ObjectiveC;
 
 #include <assert.h>
 
@@ -59,6 +61,118 @@ void PerformHook(void* _target, void* _replacement, void** orig) {
 }
 
 
+@interface LCSharedUtils : NSObject
++ (NSURL *)appGroupPath;
+@end
+
+@interface _LSDefaultsHook : NSObject
+@end
+@implementation _LSDefaultsHook
+- (NSURL *)databaseContainerDirectoryURL {
+    static NSURL *dbContainerURL = nil;
+    if(!dbContainerURL) {
+        dbContainerURL = [[NSClassFromString(@"LCSharedUtils") appGroupPath] URLByAppendingPathComponent:@"LiveContainer/lsd"];
+        [NSFileManager.defaultManager createDirectoryAtURL:dbContainerURL withIntermediateDirectories:YES attributes:nil error:nil];
+    }
+    return dbContainerURL;
+}
+- (NSURL *)systemContainerURL {
+    return self.databaseContainerDirectoryURL;
+}
+- (NSURL *)systemGroupContainerURL {
+    return self.databaseContainerDirectoryURL;
+}
+- (NSURL *)userContainerURL {
+    return self.databaseContainerDirectoryURL;
+}
+- (NSURL *)databaseStoreFileURL {
+    return [self.databaseContainerDirectoryURL URLByAppendingPathComponent:@"com.apple.LaunchServices-6291460-v2.csstore"];
+}
+- (NSURL *)systemContentDatabaseStoreFileURL {
+    return [self.databaseContainerDirectoryURL URLByAppendingPathComponent:@"SystemDataOnly-com.apple.LaunchServices-6291460-v2.csstore"];
+}
+- (NSURL *)unremappableDatabaseStoreFileURL {
+    return [[self databaseStoreFileURL] URLByAppendingPathExtension:@".unremappable"];
+}
+- (NSURL *)queriedSchemesMapFileURL {
+    return [self.databaseContainerDirectoryURL URLByAppendingPathComponent:@"com.apple.lsdschemes.plist"];
+}
+- (NSURL *)identifiersFileURL {
+    return [self.databaseContainerDirectoryURL URLByAppendingPathComponent:@"com.apple.lsdidentifiers.plist"];
+}
+- (NSURL *)preferencesFileURL {
+    return [self.databaseContainerDirectoryURL URLByAppendingPathComponent:@"com.apple.LaunchServices.plist"];
+}
+- (NSURL *)securePreferencesFileURL {
+    return [self.databaseContainerDirectoryURL URLByAppendingPathComponent:@"com.apple.launchservices.securepreferences.plist"];
+}
+- (NSURL *)preSydroFSecurePreferencesFileURL {
+    return [self.databaseContainerDirectoryURL URLByAppendingPathComponent:@"com.apple.launchservices.securepreferences.plist"];
+}
+- (NSURL *)settingsStoreFileURL {
+    return [self.databaseContainerDirectoryURL URLByAppendingPathComponent:@"com.apple.LaunchServices.SettingsStore.sql"];
+}
+- (NSURL *)appProtectionStoreFileURL {
+    return [self.databaseContainerDirectoryURL URLByAppendingPathComponent:@"com.apple.LaunchServicesAppProtectionStore.plist"];
+}
+- (NSURL *)dbSentinelFileURL {
+    return [self.databaseContainerDirectoryURL URLByAppendingPathComponent:@"com.apple.LaunchServices.dirty"];
+}
+- (NSURL *)dbRecoveryFileURL {
+    return [self.databaseContainerDirectoryURL URLByAppendingPathComponent:@"com.apple.LaunchServices.error"];
+}
+- (NSURL *)dbSyncInterruptedFileURL {
+    return [self.databaseContainerDirectoryURL URLByAppendingPathComponent:@"com.apple.LaunchServices.syncInterrupted"];
+}
+- (NSURL *)installJournalDirectoryURL {
+    return [self.databaseContainerDirectoryURL URLByAppendingPathComponent:@"com.apple.LaunchServices.InstallJournal"];
+}
+- (NSURL *)progressProportionsStateURL {
+    return [self.databaseContainerDirectoryURL URLByAppendingPathComponent:@"ProgressProporitions.plist"];
+}
+- (NSURL *)appMarketplacesPreferencesStateURL {
+    return [self.databaseContainerDirectoryURL URLByAppendingPathComponent:@"com.apple.launchservices.appmarketplaces.plist"];
+}
+- (NSURL *)specialAppEligibilityStateURL {
+    return [self.databaseContainerDirectoryURL URLByAppendingPathComponent:@"SpecialAppEligibilityState.plist"];
+}
+- (NSURL *)defaultAppQueryStateURL {
+    return [self.databaseContainerDirectoryURL URLByAppendingPathComponent:@"DefaultAppQueryState.plist"];
+}
+
+@end
+
+void swizzle(Class originalClass, Class swizzledClass, SEL selector) {
+    Method originalMethod = class_getInstanceMethod(originalClass, selector);
+    Method swizzledMethod = class_getInstanceMethod(swizzledClass, selector);
+    method_setImplementation(originalMethod, method_getImplementation(swizzledMethod));
+}
+
+__attribute__((constructor)) void SwizzleLSDDefaults(void) {
+    Class lsdClass = NSClassFromString(@"_LSDefaults");
+    swizzle(lsdClass, _LSDefaultsHook.class, @selector(systemContainerURL));
+    swizzle(lsdClass, _LSDefaultsHook.class, @selector(systemGroupContainerURL));
+    swizzle(lsdClass, _LSDefaultsHook.class, @selector(userContainerURL));
+    swizzle(lsdClass, _LSDefaultsHook.class, @selector(databaseContainerDirectoryURL));
+    swizzle(lsdClass, _LSDefaultsHook.class, @selector(databaseStoreFileURL));
+    swizzle(lsdClass, _LSDefaultsHook.class, @selector(systemContentDatabaseStoreFileURL));
+    swizzle(lsdClass, _LSDefaultsHook.class, @selector(unremappableDatabaseStoreFileURL));
+    swizzle(lsdClass, _LSDefaultsHook.class, @selector(queriedSchemesMapFileURL));
+    swizzle(lsdClass, _LSDefaultsHook.class, @selector(identifiersFileURL));
+    swizzle(lsdClass, _LSDefaultsHook.class, @selector(preferencesFileURL));
+    swizzle(lsdClass, _LSDefaultsHook.class, @selector(securePreferencesFileURL));
+    swizzle(lsdClass, _LSDefaultsHook.class, @selector(preSydroFSecurePreferencesFileURL));
+    swizzle(lsdClass, _LSDefaultsHook.class, @selector(settingsStoreFileURL));
+    swizzle(lsdClass, _LSDefaultsHook.class, @selector(appProtectionStoreFileURL));
+    swizzle(lsdClass, _LSDefaultsHook.class, @selector(dbSentinelFileURL));
+    swizzle(lsdClass, _LSDefaultsHook.class, @selector(dbRecoveryFileURL));
+    swizzle(lsdClass, _LSDefaultsHook.class, @selector(dbSyncInterruptedFileURL));
+    swizzle(lsdClass, _LSDefaultsHook.class, @selector(installJournalDirectoryURL));
+    swizzle(lsdClass, _LSDefaultsHook.class, @selector(progressProportionsStateURL));
+    swizzle(lsdClass, _LSDefaultsHook.class, @selector(appMarketplacesPreferencesStateURL));
+    swizzle(lsdClass, _LSDefaultsHook.class, @selector(specialAppEligibilityStateURL));
+    swizzle(lsdClass, _LSDefaultsHook.class, @selector(defaultAppQueryStateURL));
+}
 
 
 #if 0

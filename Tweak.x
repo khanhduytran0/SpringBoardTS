@@ -7,10 +7,7 @@
 #include <xpc/xpc.h>
 #include <dispatch/dispatch.h>
 #import <objc/runtime.h>
-
-@interface LCSharedUtils : NSObject
-+ (NSURL *)appGroupPath;
-@end
+#include <os/lock.h>
 
 @interface FBScene : NSObject
 - (NSString *)identifier;
@@ -97,7 +94,7 @@ configurationForConnectingSceneSession:(UISceneSession *)connectingSceneSession 
 %end
 
 %hook PBUIPosterViewController
-- (instancetype)init {
+- (id)fetchWallpaperProminentColor:(id)wallpaper {
     return nil;
 }
 %end
@@ -267,13 +264,6 @@ typedef void (^LSBundleProxyHandler)(LSBundleProxy *proxy, BOOL *stop);
 }
 %end
 
-// disable PosterBoard route for now
-%hook CSPosterSwitcherViewController
-- (void)setAppHostConfiguring:(id)obj {
-    // do nothing
-}
-%end
-
 // iOS 18
 %hook SBBacklightController
 + (instancetype)_sharedInstanceCreateIfNeeded:(BOOL)arg1 {
@@ -304,7 +294,44 @@ typedef void (^LSBundleProxyHandler)(LSBundleProxy *proxy, BOOL *stop);
 }
 %end
 
-%ctor {
-    //MSImageRef image = MSGetImageByName("/System/Library/PrivateFrameworks/UIKitCore.framework/UIKitCore");
-    //%init(_UIApplicationProcessIsSpringBoard = MSFindSymbol(image, "__UIApplicationProcessIsSpringBoard"));
+// temp fix for app list
+%hook __NSSetM
+- (void)removeObject:(id)remove {
+    if (remove != nil) {
+        %orig(remove);
+    }
 }
+%end
+
+// @pengubow: fix crash when AirPods are connected
+%hook AFSettingsConnection
+- (id)_settingsServiceWithErrorHandler:(id)arg1 {
+    return nil;
+}
+%end
+
+@interface LSDBExecutionContext : NSObject
+- (void *)_perThreadContextsLock_findPerThreadContextForThisThreadIfExists;
+- (void *)_perThreadContextsLock_createPerThreadContextForThisThread;
+@end
+%hook LSDBExecutionContext
+- (void *)_perThreadContextsLock_findPerThreadContextForThisThread {
+    void *context = self._perThreadContextsLock_findPerThreadContextForThisThreadIfExists;
+    if(context) {
+        return context;
+    }
+    return self._perThreadContextsLock_createPerThreadContextForThisThread;
+}
+%end
+
+%hookf(void, os_unfair_lock_assert_owner, const os_unfair_lock *lock) {
+    // various functions in LaunchServices trip this assert, so do nothing
+}
+
+// TODO
+
+/*
+Could not load configuration file (NSPropertyListSerialization error) at file:///var/mobile/Library/ControlCenter/ModuleConfiguration.plist, plist error Error Domain=NSCocoaErrorDomain Code=3842 "Property list reading could not be completed because the stream had an unknown error. Did you forget to open the stream?" UserInfo={NSDebugDescription=Property list reading could not be completed because the stream had an unknown error. Did you forget to open the stream?, NSUnderlyingError=0x13c1cdc50 {Error Domain=NSPOSIXErrorDomain Code=1 "Operation not permitted" UserInfo={_kCFStreamErrorCodeKey=1, _kCFStreamErrorDomainKey=1}}}
+Error writing configuration file file:///var/mobile/Library/ControlCenter/ModuleConfiguration.plist, Error Domain=NSCocoaErrorDomain Code=513 "You don’t have permission to save the file “ModuleConfiguration.plist” in the folder “ControlCenter”." UserInfo={NSFilePath=/var/mobile/Library/ControlCenter/ModuleConfiguration.plist, NSURL=file:///var/mobile/Library/ControlCenter/ModuleConfiguration.plist, NSUnderlyingError=0x13c347c00 {Error Domain=NSPOSIXErrorDomain Code=1 "Operation not permitted"}}
+*/
+
