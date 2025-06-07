@@ -71,7 +71,11 @@ void PerformHook(void* _target, void* _replacement, void** orig) {
 - (NSURL *)databaseContainerDirectoryURL {
     static NSURL *dbContainerURL = nil;
     if(!dbContainerURL) {
-        dbContainerURL = [[NSClassFromString(@"LCSharedUtils") appGroupPath] URLByAppendingPathComponent:@"LiveContainer/lsd"];
+        NSURL *rootDocURL = [[NSClassFromString(@"LCSharedUtils") appGroupPath] URLByAppendingPathComponent:@"LiveContainer"];
+        if(!rootDocURL) {
+            rootDocURL = [NSURL fileURLWithPath:[NSString stringWithFormat:@"%s/Documents", getenv("LC_HOME_PATH")]];
+        }
+        dbContainerURL = [rootDocURL URLByAppendingPathComponent:@"lsd"];
         [NSFileManager.defaultManager createDirectoryAtURL:dbContainerURL withIntermediateDirectories:YES attributes:nil error:nil];
     }
     return dbContainerURL;

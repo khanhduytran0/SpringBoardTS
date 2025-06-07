@@ -33,8 +33,11 @@ void SBLCRegisterInstalledApps(void) {
     NSFileManager *fileManager = [NSFileManager defaultManager];
     NSMutableArray *apps = [fileManager contentsOfDirectoryAtURL:docPath includingPropertiesForKeys:@[NSURLIsDirectoryKey]
                                                          options:NSDirectoryEnumerationSkipsHiddenFiles error:nil].mutableCopy;
-    [apps addObjectsFromArray:[fileManager contentsOfDirectoryAtURL:appGroupPath includingPropertiesForKeys:@[NSURLIsDirectoryKey]
-                                                            options:NSDirectoryEnumerationSkipsHiddenFiles error:nil]];
+    if(appGroupPath) {
+        NSArray *sharedApps = [fileManager contentsOfDirectoryAtURL:appGroupPath includingPropertiesForKeys:@[NSURLIsDirectoryKey]
+                                                        options:NSDirectoryEnumerationSkipsHiddenFiles error:nil];
+        [apps addObjectsFromArray:sharedApps];
+    }
     for (NSURL *url in apps) {
         if (![url.pathExtension isEqualToString:@"app"]) continue;
         // TODO: handle hidden apps?

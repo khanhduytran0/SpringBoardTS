@@ -38,7 +38,7 @@ jobs:
       - name: Build Packages
         run: |
           export THEOS_PLATFORM_SDK_ROOT=$THEOS/sdks/iPhoneOS15.6.sdk
-          make package
+          make package STRIP=0
           cp packages/*.ipa .
 
       - name: Upload Packages
