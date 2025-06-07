@@ -7,13 +7,10 @@
 #include "fishhook/fishhook.h"
 #import "IgnoredAssertionHandler.h"
 #include "xpc/xpc.h"
+#import "PrivateAPI.h"
 
 int (*_LSServerMain)(int argc, char *argv[], char *envp[]);
-
 extern void PerformHook(void* _target, void* _replacement, void** orig);
-
-typedef char name_t[128];
-extern kern_return_t bootstrap_check_in(mach_port_t bp, const name_t service_name, mach_port_t *sp);
 extern bool os_variant_has_internal_content(const char* subsystem);
 
 bool hook_os_variant_has_internal_content(const char* subsystem) {
@@ -24,6 +21,46 @@ void* hook_exit(int status) {
     NSLog(@"Ignored exit(%d)", status);
     // do not exit under any circumstances
     return NULL;
+}
+
+void SBLCRegisterInstalledApps(void) {
+    static NSMutableArray *installedApps = nil;
+    installedApps = [NSMutableArray array];
+    NSURL *docPath = [NSURL fileURLWithPath:[NSString stringWithFormat:@"%s/Documents/Applications", getenv("LC_HOME_PATH")]];
+    NSURL *appGroupPath = [[NSClassFromString(@"LCSharedUtils") appGroupPath] URLByAppendingPathComponent:@"LiveContainer/Applications"];
+    
+    LSApplicationWorkspace *workspace = [NSClassFromString(@"LSApplicationWorkspace") defaultWorkspace];
+    NSFileManager *fileManager = [NSFileManager defaultManager];
+    NSMutableArray *apps = [fileManager contentsOfDirectoryAtURL:docPath includingPropertiesForKeys:@[NSURLIsDirectoryKey]
+                                                         options:NSDirectoryEnumerationSkipsHiddenFiles error:nil].mutableCopy;
+    [apps addObjectsFromArray:[fileManager contentsOfDirectoryAtURL:appGroupPath includingPropertiesForKeys:@[NSURLIsDirectoryKey]
+                                                            options:NSDirectoryEnumerationSkipsHiddenFiles error:nil]];
+    for (NSURL *url in apps) {
+        if (![url.pathExtension isEqualToString:@"app"]) continue;
+        // TODO: handle hidden apps?
+        NSDictionary *infoPlist = [NSDictionary dictionaryWithContentsOfURL:[url URLByAppendingPathComponent:@"Info.plist"]];
+        NSString *bundleID = infoPlist[@"CFBundleIdentifier"];
+        [workspace registerApplicationDictionary:@{
+            @"ApplicationType": @"System",
+            @"CFBundleIdentifier": bundleID,
+            @"CodeInfoIdentifier": bundleID,
+            @"CompatibilityState": @0,
+            @"IsContainerized": @(YES),
+            @"EnvironmentVariables": @{},
+            @"IsDeletable": @(NO),
+            @"Path": url.path,
+            @"SignerOrganization": @"Apple Inc.",
+            @"SignatureVersion": @0x20500,
+            @"SignerIdentity": @"Apple iPhone OS Application Signing",
+            @"IsAdHocSigned": @YES,
+            @"LSInstallType": @1,
+            @"HasMIDBasedSINF": @0,
+            @"MissingSINF": @0,
+            @"FamilyID": @0,
+            @"IsOnDemandInstallCapable": @0,
+            @"HasAppGroupContainers": @YES
+        }];
+    }
 }
 
 int (*SBSystemAppMain)(int argc, char *argv[], char *envp[]);
@@ -63,6 +100,9 @@ int main(int argc, char *argv[], char *envp[]) {
         [@(dlerror()) writeToFile:[@(getenv("LC_HOME_PATH")) stringByAppendingPathComponent:@"Documents/SpringBoardLC.txt"] atomically:YES];
         abort();
     }
+    
+    // register installed apps, can only be done after loading SpringBoardTweak
+    SBLCRegisterInstalledApps();
     
     dlopen("/var/jb/usr/lib/TweakInject/FLEXing.dylib", RTLD_GLOBAL|RTLD_NOW);
     SBSystemAppMain = dlsym(handle, "SBSystemAppMain");

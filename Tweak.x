@@ -8,30 +8,7 @@
 #include <dispatch/dispatch.h>
 #import <objc/runtime.h>
 #include <os/lock.h>
-
-@interface FBScene : NSObject
-- (NSString *)identifier;
-@end
-
-@interface FBSScene : NSObject
-- (NSString *)identifier;
-- (id)identity;
-- (id)identityToken;
-@end
-
-@interface UIMutableApplicationSceneSettings : NSObject
-- (void)setLevel:(CGFloat)level;
-@end
-
-@interface UIApplicationSceneSettings : NSObject
-- (instancetype)initWithSettings:(id)s;
-- (UIMutableApplicationSceneSettings *)mutableCopy;
-- (CGFloat)level;
-@end
-
-@interface UIWindowScene(private)
-- (FBSScene *)_scene;
-@end
+#import "PrivateAPI.h"
 
 %hook BKSSystemShellService
 - (instancetype)initWithConfigurator:(id)configurator {

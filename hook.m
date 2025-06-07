@@ -142,38 +142,17 @@ void PerformHook(void* _target, void* _replacement, void** orig) {
 
 @end
 
-void swizzle(Class originalClass, Class swizzledClass, SEL selector) {
-    Method originalMethod = class_getInstanceMethod(originalClass, selector);
-    Method swizzledMethod = class_getInstanceMethod(swizzledClass, selector);
-    method_setImplementation(originalMethod, method_getImplementation(swizzledMethod));
-}
-
 __attribute__((constructor)) void SwizzleLSDDefaults(void) {
     Class lsdClass = NSClassFromString(@"_LSDefaults");
-    swizzle(lsdClass, _LSDefaultsHook.class, @selector(systemContainerURL));
-    swizzle(lsdClass, _LSDefaultsHook.class, @selector(systemGroupContainerURL));
-    swizzle(lsdClass, _LSDefaultsHook.class, @selector(userContainerURL));
-    swizzle(lsdClass, _LSDefaultsHook.class, @selector(databaseContainerDirectoryURL));
-    swizzle(lsdClass, _LSDefaultsHook.class, @selector(databaseStoreFileURL));
-    swizzle(lsdClass, _LSDefaultsHook.class, @selector(systemContentDatabaseStoreFileURL));
-    swizzle(lsdClass, _LSDefaultsHook.class, @selector(unremappableDatabaseStoreFileURL));
-    swizzle(lsdClass, _LSDefaultsHook.class, @selector(queriedSchemesMapFileURL));
-    swizzle(lsdClass, _LSDefaultsHook.class, @selector(identifiersFileURL));
-    swizzle(lsdClass, _LSDefaultsHook.class, @selector(preferencesFileURL));
-    swizzle(lsdClass, _LSDefaultsHook.class, @selector(securePreferencesFileURL));
-    swizzle(lsdClass, _LSDefaultsHook.class, @selector(preSydroFSecurePreferencesFileURL));
-    swizzle(lsdClass, _LSDefaultsHook.class, @selector(settingsStoreFileURL));
-    swizzle(lsdClass, _LSDefaultsHook.class, @selector(appProtectionStoreFileURL));
-    swizzle(lsdClass, _LSDefaultsHook.class, @selector(dbSentinelFileURL));
-    swizzle(lsdClass, _LSDefaultsHook.class, @selector(dbRecoveryFileURL));
-    swizzle(lsdClass, _LSDefaultsHook.class, @selector(dbSyncInterruptedFileURL));
-    swizzle(lsdClass, _LSDefaultsHook.class, @selector(installJournalDirectoryURL));
-    swizzle(lsdClass, _LSDefaultsHook.class, @selector(progressProportionsStateURL));
-    swizzle(lsdClass, _LSDefaultsHook.class, @selector(appMarketplacesPreferencesStateURL));
-    swizzle(lsdClass, _LSDefaultsHook.class, @selector(specialAppEligibilityStateURL));
-    swizzle(lsdClass, _LSDefaultsHook.class, @selector(defaultAppQueryStateURL));
+    uint32_t mc = 0;
+    Method *mlist = class_copyMethodList(_LSDefaultsHook.class, &mc);
+    for(uint32_t i = 0; i < mc; i++) {
+        Method swizzledMethod = mlist[i];
+        Method originalMethod = class_getInstanceMethod(lsdClass, method_getName(swizzledMethod));
+        method_setImplementation(originalMethod, method_getImplementation(swizzledMethod));
+    }
+    free(mlist);
 }
-
 
 #if 0
 
