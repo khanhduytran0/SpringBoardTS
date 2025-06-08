@@ -23,49 +23,6 @@ void* hook_exit(int status) {
     return NULL;
 }
 
-void SBLCRegisterInstalledApps(void) {
-    static NSMutableArray *installedApps = nil;
-    installedApps = [NSMutableArray array];
-    NSURL *docPath = [NSURL fileURLWithPath:[NSString stringWithFormat:@"%s/Documents/Applications", getenv("LC_HOME_PATH")]];
-    NSURL *appGroupPath = [[NSClassFromString(@"LCSharedUtils") appGroupPath] URLByAppendingPathComponent:@"LiveContainer/Applications"];
-    
-    LSApplicationWorkspace *workspace = [NSClassFromString(@"LSApplicationWorkspace") defaultWorkspace];
-    NSFileManager *fileManager = [NSFileManager defaultManager];
-    NSMutableArray *apps = [fileManager contentsOfDirectoryAtURL:docPath includingPropertiesForKeys:@[NSURLIsDirectoryKey]
-                                                         options:NSDirectoryEnumerationSkipsHiddenFiles error:nil].mutableCopy;
-    if(appGroupPath) {
-        NSArray *sharedApps = [fileManager contentsOfDirectoryAtURL:appGroupPath includingPropertiesForKeys:@[NSURLIsDirectoryKey]
-                                                        options:NSDirectoryEnumerationSkipsHiddenFiles error:nil];
-        [apps addObjectsFromArray:sharedApps];
-    }
-    for (NSURL *url in apps) {
-        if (![url.pathExtension isEqualToString:@"app"]) continue;
-        // TODO: handle hidden apps?
-        NSDictionary *infoPlist = [NSDictionary dictionaryWithContentsOfURL:[url URLByAppendingPathComponent:@"Info.plist"]];
-        NSString *bundleID = infoPlist[@"CFBundleIdentifier"];
-        [workspace registerApplicationDictionary:@{
-            @"ApplicationType": @"System",
-            @"CFBundleIdentifier": bundleID,
-            @"CodeInfoIdentifier": bundleID,
-            @"CompatibilityState": @0,
-            @"IsContainerized": @(YES),
-            @"EnvironmentVariables": @{},
-            @"IsDeletable": @(NO),
-            @"Path": url.path,
-            @"SignerOrganization": @"Apple Inc.",
-            @"SignatureVersion": @0x20500,
-            @"SignerIdentity": @"Apple iPhone OS Application Signing",
-            @"IsAdHocSigned": @YES,
-            @"LSInstallType": @1,
-            @"HasMIDBasedSINF": @0,
-            @"MissingSINF": @0,
-            @"FamilyID": @0,
-            @"IsOnDemandInstallCapable": @0,
-            @"HasAppGroupContainers": @YES
-        }];
-    }
-}
-
 int (*SBSystemAppMain)(int argc, char *argv[], char *envp[]);
 int main(int argc, char *argv[], char *envp[]) {
     // initialize lsd
@@ -103,9 +60,6 @@ int main(int argc, char *argv[], char *envp[]) {
         [@(dlerror()) writeToFile:[@(getenv("LC_HOME_PATH")) stringByAppendingPathComponent:@"Documents/SpringBoardLC.txt"] atomically:YES];
         abort();
     }
-    
-    // register installed apps, can only be done after loading SpringBoardTweak
-    SBLCRegisterInstalledApps();
     
     dlopen("/var/jb/usr/lib/TweakInject/FLEXing.dylib", RTLD_GLOBAL|RTLD_NOW);
     SBSystemAppMain = dlsym(handle, "SBSystemAppMain");

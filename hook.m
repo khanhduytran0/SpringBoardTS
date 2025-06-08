@@ -71,7 +71,9 @@ void PerformHook(void* _target, void* _replacement, void** orig) {
 - (NSURL *)databaseContainerDirectoryURL {
     static NSURL *dbContainerURL = nil;
     if(!dbContainerURL) {
-        NSURL *rootDocURL = [[NSClassFromString(@"LCSharedUtils") appGroupPath] URLByAppendingPathComponent:@"LiveContainer"];
+        // Use Documents dir for ease of access
+        NSURL *rootDocURL = nil;
+        //[[NSClassFromString(@"LCSharedUtils") appGroupPath] URLByAppendingPathComponent:@"LiveContainer"];
         if(!rootDocURL) {
             rootDocURL = [NSURL fileURLWithPath:[NSString stringWithFormat:@"%s/Documents", getenv("LC_HOME_PATH")]];
         }
@@ -143,19 +145,55 @@ void PerformHook(void* _target, void* _replacement, void** orig) {
 - (NSURL *)defaultAppQueryStateURL {
     return [self.databaseContainerDirectoryURL URLByAppendingPathComponent:@"DefaultAppQueryState.plist"];
 }
-
 @end
 
-__attribute__((constructor)) void SwizzleLSDDefaults(void) {
-    Class lsdClass = NSClassFromString(@"_LSDefaults");
+@interface MIExecutableBundleHook : NSObject
+@end
+@implementation MIExecutableBundleHook
+- (BOOL)needsDataContainer {
+    // guest apps don't have entitlements so it will fail if we return YES
+    return NO;
+}
+@end
+
+@interface MIGlobalConfiguration : NSObject
+@end
+@interface MIGlobalConfigurationHook : NSObject
+@end
+@implementation MIGlobalConfigurationHook
+/*
+- (BOOL)hasInternalContent {
+    return YES;
+}
+- (NSURL *)internalAppsDirectory {
+    // returns private apps directory
+    return [NSURL fileURLWithPath:[NSString stringWithFormat:@"%s/Documents/Applications", getenv("LC_HOME_PATH")]];
+}
+ */
+- (NSURL *)systemAppsDirectory {
+    NSURL *appGroupPath = [[NSClassFromString(@"LCSharedUtils") appGroupPath] URLByAppendingPathComponent:@"LiveContainer/Applications"];
+    if(appGroupPath) {
+        return appGroupPath;
+    }
+    return [NSURL fileURLWithPath:@"/Applications"];
+}
+@end
+
+static void ReplaceMethods(Class origClass, Class newClass) {
     uint32_t mc = 0;
-    Method *mlist = class_copyMethodList(_LSDefaultsHook.class, &mc);
+    Method *mlist = class_copyMethodList(newClass, &mc);
     for(uint32_t i = 0; i < mc; i++) {
         Method swizzledMethod = mlist[i];
-        Method originalMethod = class_getInstanceMethod(lsdClass, method_getName(swizzledMethod));
+        Method originalMethod = class_getInstanceMethod(origClass, method_getName(swizzledMethod));
         method_setImplementation(originalMethod, method_getImplementation(swizzledMethod));
     }
     free(mlist);
+}
+
+__attribute__((constructor)) void SwizzleLSDDefaults(void) {
+    ReplaceMethods(NSClassFromString(@"_LSDefaults"), _LSDefaultsHook.class);
+    ReplaceMethods(NSClassFromString(@"MIExecutableBundle"), MIExecutableBundleHook.class);
+    ReplaceMethods(NSClassFromString(@"MIGlobalConfiguration"), MIGlobalConfigurationHook.class);
 }
 
 #if 0

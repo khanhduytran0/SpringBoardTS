@@ -292,6 +292,13 @@ typedef void (^LSBundleProxyHandler)(LSBundleProxy *proxy, BOOL *stop);
 - (void *)_perThreadContextsLock_createPerThreadContextForThisThread;
 @end
 %hook LSDBExecutionContext
+- (void *)_perThreadContextsLock_createPerThreadContextForThisThread {
+    void *context = self._perThreadContextsLock_findPerThreadContextForThisThreadIfExists;
+    if(context) {
+        return context;
+    }
+    return %orig;
+}
 - (void *)_perThreadContextsLock_findPerThreadContextForThisThread {
     void *context = self._perThreadContextsLock_findPerThreadContextForThisThreadIfExists;
     if(context) {
