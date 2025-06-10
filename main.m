@@ -8,6 +8,7 @@
 #import "IgnoredAssertionHandler.h"
 #include "xpc/xpc.h"
 #import "PrivateAPI.h"
+@import Darwin;
 
 int (*_LSServerMain)(int argc, char *argv[], char *envp[]);
 extern void PerformHook(void* _target, void* _replacement, void** orig);
@@ -16,6 +17,11 @@ extern bool os_variant_has_internal_content(const char* subsystem);
 bool hook_os_variant_has_internal_content(const char* subsystem) {
 	 return true;
 }
+
+void hook_os_unfair_lock_assert_owner() {
+    // do nothing
+}
+    
 
 void* hook_exit(int status) {
     NSLog(@"Ignored exit(%d)", status);
@@ -44,6 +50,9 @@ int main(int argc, char *argv[], char *envp[]) {
     
     // Ignore all assertions
     [NSThread.currentThread.threadDictionary setObject:[IgnoredAssertionHandler new] forKey:NSAssertionHandlerKey];
+    
+    // Ignore lock assertion
+    PerformHook(os_unfair_lock_assert_owner, hook_os_unfair_lock_assert_owner, NULL);
     
     // Avoid frameworks crashing due to not being SpringBoard :)
     PerformHook(os_variant_has_internal_content, hook_os_variant_has_internal_content, NULL);

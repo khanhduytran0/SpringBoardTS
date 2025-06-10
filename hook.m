@@ -47,8 +47,10 @@ void redirectFunction(void *patchAddr, void *target) {
 }
 
 void PerformHook(void* _target, void* _replacement, void** orig) {
+    EKJITLessHook(_target, _replacement, orig);
+    /*
     if(orig) {
-#if 0 // ellekit
+#if 1 // ellekit
         EKJITLessHook(_target, _replacement, orig);
 #else
         void *handle = dlopen("@executable_path/Frameworks/CydiaSubstrate.framework/CydiaSubstrate", RTLD_GLOBAL);
@@ -58,6 +60,7 @@ void PerformHook(void* _target, void* _replacement, void** orig) {
     } else {
         redirectFunction(_target, _replacement);
     }
+     */
 }
 
 

@@ -24,6 +24,8 @@
 				<dict/>
 				<key>com.apple.frontboard.layout-monitor</key>
 				<dict/>
+				<key>com.apple.frontboard.orientation-observer</key>
+				<dict/>
 				<key>com.apple.frontboard.system-service</key>
 				<dict/>
 				<key>com.apple.frontboard.workspace-service</key>
@@ -51,6 +53,7 @@
 							<string>com.apple.SpringBoard.SceneWorkspace.PerfPowerHUD</string>
 							<string>com.apple.SpringBoard.SceneWorkspace.CameraOverlayUI</string>
 							<string>com.apple.SpringBoard.SceneWorkspace.PrototypeTools</string>
+							<string>com.apple.SpringBoard.SceneWorkspace.AudioHUD</string>
 						</array>
 					</dict>
 				</dict>
@@ -93,6 +96,8 @@
 				<key>com.apple.springboard.mitigation-session-service</key>
 				<dict/>
 				<key>com.apple.springboard.multitasking-shortcut-service</key>
+				<dict/>
+				<key>com.apple.springboard.physical-button-target-monitor-service</key>
 				<dict/>
 				<key>com.apple.springboard.productivity-gesture-service</key>
 				<dict/>

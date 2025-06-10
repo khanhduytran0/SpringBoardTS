@@ -308,10 +308,6 @@ typedef void (^LSBundleProxyHandler)(LSBundleProxy *proxy, BOOL *stop);
 }
 %end
 
-%hookf(void, os_unfair_lock_assert_owner, const os_unfair_lock *lock) {
-    // various functions in LaunchServices trip this assert, so do nothing
-}
-
 // TODO
 
 /*
